@@ -11,7 +11,7 @@ import CoreData
 class ViewController: UIViewController {
     @IBOutlet weak var tableView: UITableView!
     
-    @IBOutlet weak var searchBar: UISearchBar!
+    let searchController = UISearchController()
     
     
     var items : [Item] = []
@@ -20,14 +20,20 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
+        searchController.searchBar.delegate = self
         tableView.dataSource = self
         tableView.delegate = self
-        searchBar.isHidden = true
-        searchBar.delegate = self
-        navigationItem.titleView = searchBar
-        searchBar.placeholder = "Your placeholder"
-        var leftNavBarButton = UIBarButtonItem(customView:searchBar)
-        self.navigationItem.titleView?.center = leftNavBarButton
+        navigationItem.searchController = searchController
+        searchController.searchBar.isHidden = false
+        searchController.obscuresBackgroundDuringPresentation = false
+                
+        
+
+
+        
+//
+        
+        
         
         
        
@@ -81,6 +87,7 @@ extension ViewController : UITableViewDataSource {
         }else {
             cell.accessoryType = .none
         }
+                
         return cell
     }
 
@@ -106,17 +113,7 @@ extension ViewController : UITableViewDelegate {
 }
 
 
-////MARK: - ScrollViewDelegate Functions
-//
-//extension ViewController : UIScrollViewDelegate {
-//    func scrollViewShouldScrollToTop(_ scrollView: UIScrollView) -> Bool {
-//        if searchBar.isHidden {
-//            return true
-//        }else {
-//            return false
-//        }
-//    }
-//}
+
 
 
 //MARK: - DataBase Functions
