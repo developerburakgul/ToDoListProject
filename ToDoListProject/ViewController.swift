@@ -10,12 +10,8 @@ import CoreData
 
 class ViewController: UIViewController {
     @IBOutlet weak var tableView: UITableView!
-    
     let searchController = UISearchController()
-    
-    
     var items : [Item] = []
-    
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -26,49 +22,32 @@ class ViewController: UIViewController {
         navigationItem.searchController = searchController
         searchController.searchBar.isHidden = false
         searchController.obscuresBackgroundDuringPresentation = false
-                
-        
-
-
-        
-//
-        
-        
-        
-        
-       
-        
         loadDataFromDataBase()
-        
     }
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
-        var text = UITextField()
+        var textField = UITextField()
         let alert = UIAlertController(title: "Add item", message: "", preferredStyle: .alert)
-        
         let addButton = UIAlertAction(title: "Add Button", style: .default) { action in
-            let newItem = Item(context: self.context)
-            newItem.title = text.text
-            newItem.isDone = false
-            self.items.append(newItem)
-            self.saveDataToDataBase()
-            
+            if textField.text != "" { // if textField is not empty , save data
+                let newItem = Item(context: self.context)
+                newItem.title = textField.text
+                newItem.isDone = false
+                self.items.append(newItem)
+                self.saveDataToDataBase()
+            }else {
+                print(alert.textFields![0].placeholder = "Text is not be empty")
+                self.present(alert, animated: true)
+            }
+               
         }
-        
-        alert.addTextField { textField in
-            textField.placeholder = "Enter here"
-            text = textField
+        alert.addTextField { text in
+            text.placeholder = "Enter here"
+            textField = text
         }
         alert.addAction(addButton)
-        
-        
-        
-        
         present(alert, animated: true)
     }
-    
-
-
 }
 
 //MARK: - TableViewDataSource Functions
@@ -77,7 +56,6 @@ extension ViewController : UITableViewDataSource {
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return items.count
     }
-    
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let item = items[indexPath.row]
@@ -87,40 +65,23 @@ extension ViewController : UITableViewDataSource {
         }else {
             cell.accessoryType = .none
         }
-                
         return cell
     }
-
-
 }
 
 //MARK: - TableViewDelegate Functions
 extension ViewController : UITableViewDelegate {
-    
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let item = items[indexPath.row]
         item.isDone = !item.isDone
         saveDataToDataBase()
         
-        
     }
-    
-    
-    
-    
-
 }
-
-
-
-
-
 //MARK: - DataBase Functions
 
 extension ViewController {
-    
-    
     func saveDataToDataBase() {
         do {
             try context.save()
@@ -128,60 +89,55 @@ extension ViewController {
         } catch  {
             print("Error saving to database \(error)")
         }
-        tableView.reloadData()
         
+        loadDataFromDataBase()
     }
     
-    
-    func loadDataFromDataBase() {
+    func loadDataFromDataBase(request : NSFetchRequest<Item> = Item.fetchRequest(),sortDescriptors : [NSSortDescriptor]? = nil,predicates : [NSPredicate]? = nil) {
         items = []
-        let fetchRequest:NSFetchRequest<Item> = NSFetchRequest.init(entityName: "Item")
-        
-        do {
-            items = try context.fetch(fetchRequest)
-            print("load data is successful")
+        let doneDescriptor = NSSortDescriptor(key: "isDone", ascending: true)
+        let nameDescriptor = NSSortDescriptor(key: "title", ascending: true)
+        request.sortDescriptors = [doneDescriptor,nameDescriptor]
+        if let additionalSortDescriptors = sortDescriptors {
+            request.sortDescriptors?.append(contentsOf: additionalSortDescriptors)
         }
-        catch {
-            print("load data is not successful \(error)")
+        if let additionalPredicates = predicates {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: additionalPredicates)
         }
-        tableView.reloadData()
-        
+            do {
+                items = try context.fetch(request)
+                print("load data is successful")
+            }
+            catch {
+                print("load data is not successful \(error)")
+            }
+            tableView.reloadData()
+        }
     }
-}
 //MARK: - SearchBarDelegate Functions
 extension ViewController : UISearchBarDelegate{
-    
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchBar.text?.count == 0 {
             DispatchQueue.main.async {
                 searchBar.resignFirstResponder()
             }
             loadDataFromDataBase()
-            
         }else {
-            let fetchRequest: NSFetchRequest<Item> = Item.fetchRequest()
-          
+            //            let fetchRequest: NSFetchRequest<Item> = Item.fetchRequest()
             let predicate = NSPredicate(format: "title BEGINSWITH[cd] %@", searchBar.text!)
-            fetchRequest.predicate = predicate
-            fetchRequest.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
-            
-            
-            
-            do {
-                items = try context.fetch(fetchRequest)
-                print("filtered data is successful")
-            }
-            catch {
-                print("filtered data is not successful \(error)")
-            }
-            tableView.reloadData()
+            //            do {
+            //                items = try context.fetch(fetchRequest)
+            //                print("filtered data is successful")
+            //            }
+            //            catch {
+            //                print("filtered data is not successful \(error)")
+            //            }
+//            tableView.reloadData()
+            loadDataFromDataBase(predicates: [predicate])
         }
-
-        
-        
     }
-    
 }
-
-
+    
+    
+    
 
