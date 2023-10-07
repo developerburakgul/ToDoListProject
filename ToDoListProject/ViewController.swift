@@ -23,6 +23,8 @@ class ViewController: UIViewController {
         return uncheckedItems + checkedItems
     }
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+//    let database = Database()
+//    var context = database.context
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
@@ -72,16 +74,21 @@ class ViewController: UIViewController {
 //MARK: - TableViewDataSource Functions
 
 extension ViewController : UITableViewDataSource {
+    
+
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return items.count
     }
     
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+//        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        let cell = UITableViewCell()
         let item = items[indexPath.row]
         cell.textLabel?.text = item.title
+    
         
         var attributedString = NSMutableAttributedString(string: item.title!)
+        print(item.title)
         if item.isDone {
             cell.accessoryType = .checkmark
             cell.tintColor? = .systemBlue
@@ -91,13 +98,13 @@ extension ViewController : UITableViewDataSource {
                 
             ]
             
-            attributedString.addAttributes(attributes, range: NSRange(location: 0, length: attributedString.length-1))
+            attributedString.addAttributes(attributes, range: NSRange(location: 0, length: attributedString.length))
             
             
             
         }else {
             cell.accessoryType = .none
-            attributedString.removeAttribute(.strikethroughStyle, range: NSRange(location: 0, length: item.title!.count))
+            attributedString.removeAttribute(.strikethroughStyle, range: NSRange(location: 0, length: attributedString.length))
             attributedString.removeAttribute(.strikethroughColor, range: NSRange(location: 0, length: attributedString.length))
             
             
