@@ -11,7 +11,12 @@ import CoreData
 class ViewController: UIViewController {
     @IBOutlet weak var tableView: UITableView!
     let searchController = UISearchController()
-    var items : [Item] = []
+    var items : [Item] = [] {
+        didSet{
+            uncheckedItems = items.filter({ $0.isDone == false })
+            checkedItems = items.filter({ $0.isDone  })
+        }
+    }
     var checkedItems : [Item] = []
     var uncheckedItems : [Item] = []
     var copyItems : [Item] {
@@ -45,7 +50,7 @@ class ViewController: UIViewController {
                 self.uncheckedItems.append(newItem)
                 self.items.append(newItem)
                 self.items = self.copyItems
-                var indeksPath = IndexPath(row: self.uncheckedItems.count-1, section: 0)
+                let indeksPath = IndexPath(row: self.uncheckedItems.count-1, section: 0)
                 self.tableView.insertRows(at: [indeksPath], with: .automatic)
                 self.saveDataToDataBase()
                 self.loadDataFromDataBase()
@@ -70,15 +75,34 @@ extension ViewController : UITableViewDataSource {
     public func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return items.count
     }
+    
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
         let item = items[indexPath.row]
         cell.textLabel?.text = item.title
+        
+        var attributedString = NSMutableAttributedString(string: item.title!)
         if item.isDone {
             cell.accessoryType = .checkmark
+            cell.tintColor? = .systemBlue
+            var attributes: [NSAttributedString.Key: Any] = [
+                .strikethroughStyle: NSUnderlineStyle.double.rawValue, // Çizgi stilini belirleyin
+                .strikethroughColor: UIColor.systemBlue// Çizginin rengini belirleyin (isteğe bağlı)
+                
+            ]
+            
+            attributedString.addAttributes(attributes, range: NSRange(location: 0, length: attributedString.length-1))
+            
+            
+            
         }else {
             cell.accessoryType = .none
+            attributedString.removeAttribute(.strikethroughStyle, range: NSRange(location: 0, length: item.title!.count))
+            attributedString.removeAttribute(.strikethroughColor, range: NSRange(location: 0, length: attributedString.length))
+            
+            
         }
+        cell.textLabel?.attributedText = attributedString
         return cell
     }
 }
@@ -91,26 +115,17 @@ extension ViewController : UITableViewDelegate {
         item.isDone = !item.isDone
         if item.isDone {
             // you must move item to checkedItems
-            
             let data = uncheckedItems.remove(at: indexPath.row)
             checkedItems.append(data)
             items = copyItems
-            let uncheckedItemCount = uncheckedItems.count
-            let checkedItemCount = checkedItems.count
-             // Animasyonlu olarak hücreleri güncellemek için aşağıdaki kodu kullanabilirsiniz:
             let indexPathToRemove = IndexPath(row: indexPath.row, section: 0)
             let indexPathToInsert = IndexPath(row: items.count-1, section: 0)
-
-             tableView.beginUpdates()
-             tableView.deleteRows(at: [indexPathToRemove], with: .left)
+            tableView.beginUpdates()
+            tableView.deleteRows(at: [indexPathToRemove], with: .left)
             tableView.insertRows(at: [indexPathToInsert], with: .right)
-             tableView.endUpdates()
-            
-
-           
+            tableView.endUpdates()
         }else {
             let data = checkedItems.remove(at: indexPath.row-uncheckedItems.count)
-            
             uncheckedItems.append(data)
             items = copyItems
             let indexPathToRemove = IndexPath(row: indexPath.row, section: 0)
@@ -119,13 +134,9 @@ extension ViewController : UITableViewDelegate {
             tableView.deleteRows(at: [indexPathToRemove], with: .right)
             tableView.insertRows(at: [indexPathToInsert], with: .left)
             tableView.endUpdates()
-            
-
         }
         
-       
         saveDataToDataBase()
-        
     }
 }
 
@@ -185,7 +196,7 @@ extension ViewController {
     func loadDataFromDataBase(request : NSFetchRequest<Item> = Item.fetchRequest(),sortDescriptors : [NSSortDescriptor]? = nil,predicates : [NSPredicate]? = nil) {
         items = []
         let doneDescriptor = NSSortDescriptor(key: "isDone", ascending: true)
-        let nameDescriptor = NSSortDescriptor(key: "title", ascending: true)
+//        let nameDescriptor = NSSortDescriptor(key: "title", ascending: true)
         request.sortDescriptors = [doneDescriptor]
         if let additionalSortDescriptors = sortDescriptors {
             request.sortDescriptors?.append(contentsOf: additionalSortDescriptors)
@@ -212,23 +223,18 @@ extension ViewController : UISearchBarDelegate{
             }
             loadDataFromDataBase()
         }else {
-                        let fetchRequest: NSFetchRequest<Item> = Item.fetchRequest()
             let predicate = NSPredicate(format: "title BEGINSWITH[cd] %@", searchBar.text!)
-                        do {
-                            items = try context.fetch(fetchRequest)
-                            print("filtered data is successful")
-                        }
-                        catch {
-                            print("filtered data is not successful \(error)")
-                        }
-            tableView.reloadData()
             loadDataFromDataBase(predicates: [predicate])
         }
+    }
+    
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        loadDataFromDataBase()
     }
 }
  
  
- 
+
     
     
     
