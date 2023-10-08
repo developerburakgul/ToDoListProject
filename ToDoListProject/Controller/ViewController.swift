@@ -22,23 +22,32 @@ class ViewController: UIViewController {
     var copyItems : [Item] {
         return uncheckedItems + checkedItems
     }
-    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-//    let database = Database()
-//    var context = database.context
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        // Do any additional setup after loading the view.
+    var context : NSManagedObjectContext!
+    let database = Database()
+    
+    
+    func someConfig() {
         searchController.searchBar.delegate = self
         tableView.dataSource = self
         tableView.delegate = self
         navigationItem.searchController = searchController
         searchController.searchBar.isHidden = false
         searchController.obscuresBackgroundDuringPresentation = false
-        uncheckedItems = getUncheckedItems()
-        checkedItems = getCheckedItems()
-        compoundCheckedAndUncheckedItems()
-       
-        loadDataFromDataBase()
+    }
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Do any additional setup after loading the view.
+        context = database.context
+        someConfig()
+        
+        uncheckedItems = database.getUncheckedItems()
+        checkedItems = database.getCheckedItems()
+        items = copyItems
+        
+        
+        items = database.loadData()
+        tableView.reloadData()
     }
     
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
@@ -49,13 +58,17 @@ class ViewController: UIViewController {
                 let newItem = Item(context: self.context)
                 newItem.title = textField.text
                 newItem.isDone = false
+                
                 self.uncheckedItems.append(newItem)
                 self.items.append(newItem)
                 self.items = self.copyItems
+                
                 let indeksPath = IndexPath(row: self.uncheckedItems.count-1, section: 0)
                 self.tableView.insertRows(at: [indeksPath], with: .automatic)
-                self.saveDataToDataBase()
-                self.loadDataFromDataBase()
+                self.database.saveData()
+                
+                self.items = self.database.loadData()
+                self.tableView.reloadData()
             }else {
                 print(alert.textFields![0].placeholder = "Text is not be empty")
                 self.present(alert, animated: true)
@@ -85,14 +98,11 @@ extension ViewController : UITableViewDataSource {
         let cell = UITableViewCell()
         let item = items[indexPath.row]
         cell.textLabel?.text = item.title
-    
-        
-        var attributedString = NSMutableAttributedString(string: item.title!)
-        print(item.title)
+        let attributedString = NSMutableAttributedString(string: item.title!)
         if item.isDone {
             cell.accessoryType = .checkmark
             cell.tintColor? = .systemBlue
-            var attributes: [NSAttributedString.Key: Any] = [
+            let attributes: [NSAttributedString.Key: Any] = [
                 .strikethroughStyle: NSUnderlineStyle.double.rawValue, // Çizgi stilini belirleyin
                 .strikethroughColor: UIColor.systemBlue// Çizginin rengini belirleyin (isteğe bağlı)
                 
@@ -125,6 +135,7 @@ extension ViewController : UITableViewDelegate {
             let data = uncheckedItems.remove(at: indexPath.row)
             checkedItems.append(data)
             items = copyItems
+            
             let indexPathToRemove = IndexPath(row: indexPath.row, section: 0)
             let indexPathToInsert = IndexPath(row: items.count-1, section: 0)
             tableView.beginUpdates()
@@ -135,6 +146,7 @@ extension ViewController : UITableViewDelegate {
             let data = checkedItems.remove(at: indexPath.row-uncheckedItems.count)
             uncheckedItems.append(data)
             items = copyItems
+            
             let indexPathToRemove = IndexPath(row: indexPath.row, section: 0)
             let indexPathToInsert = IndexPath(row: uncheckedItems.count-1, section: 0)
             tableView.beginUpdates()
@@ -143,84 +155,13 @@ extension ViewController : UITableViewDelegate {
             tableView.endUpdates()
         }
         
-        saveDataToDataBase()
+        database.saveData()
     }
 }
 
 
 
-//MARK: - DataBase Functions2
 
-
-
-extension ViewController {
-    func getUncheckedItems() -> [Item] {
-        do {
-            let request = Item.fetchRequest()
-            let predicate = NSPredicate(format: "isDone = false")
-            request.predicate = predicate
-            let uncheckedItems = try context.fetch(request)
-            return uncheckedItems
-        } catch  {
-            print("hata")
-            fatalError("There was error while fetch unchecked items")
-        }
-    }
-    
-    func getCheckedItems() -> [Item] {
-        do {
-            let request = Item.fetchRequest()
-            let predicate = NSPredicate(format: "isDone = true")
-            request.predicate = predicate
-            let uncheckedItems = try context.fetch(request)
-            return uncheckedItems
-        } catch  {
-            print("hata")
-            fatalError("There was error while fetch Checked items")
-        }
-    }
-    
-    
-    func compoundCheckedAndUncheckedItems()  {
-        items = uncheckedItems + checkedItems
-    }
-}
-//MARK: - DataBase Functions
-
- 
-extension ViewController {
-    func saveDataToDataBase() {
-        do {
-            try context.save()
-            print("Save data is successful")
-        } catch  {
-            print("Error saving to database \(error)")
-        }
-
-        
-    }
-
-    func loadDataFromDataBase(request : NSFetchRequest<Item> = Item.fetchRequest(),sortDescriptors : [NSSortDescriptor]? = nil,predicates : [NSPredicate]? = nil) {
-        items = []
-        let doneDescriptor = NSSortDescriptor(key: "isDone", ascending: true)
-//        let nameDescriptor = NSSortDescriptor(key: "title", ascending: true)
-        request.sortDescriptors = [doneDescriptor]
-        if let additionalSortDescriptors = sortDescriptors {
-            request.sortDescriptors?.append(contentsOf: additionalSortDescriptors)
-        }
-        if let additionalPredicates = predicates {
-            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: additionalPredicates)
-        }
-            do {
-                items = try context.fetch(request)
-                print("load data is successful")
-            }
-            catch {
-                print("load data is not successful \(error)")
-            }
-            tableView.reloadData()
-        }
-    }
  //MARK: - SearchBarDelegate Functions
 extension ViewController : UISearchBarDelegate{
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
@@ -228,15 +169,21 @@ extension ViewController : UISearchBarDelegate{
             DispatchQueue.main.async {
                 searchBar.resignFirstResponder()
             }
-            loadDataFromDataBase()
+            
+            items = database.loadData()
+            tableView.reloadData()
         }else {
             let predicate = NSPredicate(format: "title BEGINSWITH[cd] %@", searchBar.text!)
-            loadDataFromDataBase(predicates: [predicate])
+            
+            items = database.loadData(predicates: [predicate])
+            tableView.reloadData()
         }
     }
     
     func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
-        loadDataFromDataBase()
+       
+        items = database.loadData()
+        tableView.reloadData()
     }
 }
  
