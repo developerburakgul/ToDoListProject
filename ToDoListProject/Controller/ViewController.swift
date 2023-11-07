@@ -33,6 +33,8 @@ class ViewController: UIViewController {
         navigationItem.searchController = searchController
         searchController.searchBar.isHidden = false
         searchController.obscuresBackgroundDuringPresentation = false
+        tableView.backgroundColor = .white
+        
     }
     
     override func viewDidLoad() {
@@ -94,10 +96,11 @@ extension ViewController : UITableViewDataSource {
     }
     
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-//        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+
         let cell = UITableViewCell()
         let item = items[indexPath.row]
-        cell.textLabel?.text = item.title
+        var content = cell.defaultContentConfiguration()
+        content.text = item.title
         let attributedString = NSMutableAttributedString(string: item.title!)
         if item.isDone {
             cell.accessoryType = .checkmark
@@ -105,22 +108,25 @@ extension ViewController : UITableViewDataSource {
             let attributes: [NSAttributedString.Key: Any] = [
                 .strikethroughStyle: NSUnderlineStyle.double.rawValue, // Çizgi stilini belirleyin
                 .strikethroughColor: UIColor.systemBlue// Çizginin rengini belirleyin (isteğe bağlı)
-                
             ]
-            
             attributedString.addAttributes(attributes, range: NSRange(location: 0, length: attributedString.length))
-            
-            
-            
         }else {
             cell.accessoryType = .none
             attributedString.removeAttribute(.strikethroughStyle, range: NSRange(location: 0, length: attributedString.length))
             attributedString.removeAttribute(.strikethroughColor, range: NSRange(location: 0, length: attributedString.length))
-            
-            
         }
-        cell.textLabel?.attributedText = attributedString
+        content.attributedText = attributedString
+        cell.contentConfiguration = content
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        if editingStyle == .delete {
+            var data = self.items[indexPath.row]
+            self.database.removeData(data)
+            items.remove(at: indexPath.row)
+            self.tableView.reloadData()
+        }
     }
 }
 

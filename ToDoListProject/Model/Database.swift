@@ -42,6 +42,10 @@ class Database {
 
         
     }
+    func removeData(_ data : Item) {
+        self.context.delete(data)
+        saveData()
+    }
     
     func getUncheckedItems() -> [Item] {
         do {
@@ -68,5 +72,6 @@ class Database {
             fatalError("There was error while fetch Checked items")
         }
     }
+    
 
 }
